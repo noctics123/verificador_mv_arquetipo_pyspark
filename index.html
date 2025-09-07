@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>MV Fixer — EDV Ready</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0b1220; --panel:#101a2b; --muted:#a5b1c2; --text:#eaf1ff; --brand:#7aa2ff; --ok:#36d399; --warn:#fbbf24; --err:#ff6b6b; --code:#0c1322;
+      --border:#1f2b40; --chip:#17243a;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,#09101d 0%,#0b1220 100%);color:var(--text);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    header{padding:24px 16px;text-align:center;border-bottom:1px solid var(--border);background:rgba(16,26,43,.7);backdrop-filter: blur(6px);position:sticky;top:0;z-index:2}
+    header h1{margin:0 0 6px;font-weight:700;letter-spacing:.2px}
+    header p{margin:0;color:var(--muted)}
+    .container{max-width:1200px;margin:24px auto;padding:0 16px;display:grid;gap:16px;grid-template-columns: 1fr}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.25)}
+    .card h2{margin:0;padding:16px;border-bottom:1px solid var(--border);font-size:16px}
+    .card .content{padding:16px}
+    .grid{display:grid;gap:16px}
+    .twocol{grid-template-columns:1fr 1fr}
+    label{display:block;font-weight:600;margin-bottom:6px}
+    input[type="text"]{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:12px;background:#0c1626;color:var(--text)}
+    textarea{width:100%;min-height:220px;padding:12px 12px;border:1px solid var(--border);border-radius:12px;resize:vertical;background:#0c1626;color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
+    code, pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    pre{background:var(--code);padding:12px;border-radius:12px;overflow:auto;border:1px solid var(--border);white-space:pre-wrap}
+    .btn{cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:#0f1a2c;color:var(--text);font-weight:600}
+    .btn:hover{background:#132139}
+    .btn.primary{background:linear-gradient(135deg,#3b82f6,#7aa2ff);border-color:transparent}
+    .btn.primary:hover{filter:brightness(1.05)}
+    .btn.ghost{background:transparent}
+    .row{display:flex;gap:8px;flex-wrap:wrap}
+    .chip{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:var(--chip);border:1px solid var(--border);color:var(--muted);font-size:12px}
+    .ok{color:var(--ok)} .warn{color:var(--warn)} .err{color:var(--err)}
+    .mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+    .small{font-size:12px;color:var(--muted)}
+    .hint{margin-top:8px;color:var(--muted)}
+    .hl{background:#182744;border-left:3px solid var(--brand);padding-left:9px;border-radius:8px}
+    .mark{background:rgba(59,130,246,.18);border-bottom:1px solid rgba(122,162,255,.35)}
+    .footer{padding:16px;text-align:center;color:var(--muted)}
+    @media (min-width: 1000px){
+      .container{grid-template-columns: 1fr 1fr}
+      .full{grid-column: 1 / -1}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MV Fixer · EDV Ready</h1>
+    <p>Convierte tu script MV a tablas <b>managed</b> + <b>overwrite por partición</b> y genera parámetros de ejecución para Databricks.</p>
+  </header>
+
+  <main class="container">
+    <!-- INPUTS -->
+    <section class="card">
+      <h2>1) Pega o sube tu script <span class="small">(Python .py)</span></h2>
+      <div class="content grid">
+        <div class="row">
+          <input type="file" id="file" accept=".py" />
+          <button class="btn" id="loadSample">Cargar ejemplo mínimo</button>
+        </div>
+        <textarea id="source" placeholder="# Pega aquí el contenido del .py de tu MV"></textarea>
+        <div class="hint">Nada sale del navegador — todo el análisis y cambios son locales.</div>
+      </div>
+    </section>
+
+    <!-- CONFIG -->
+    <section class="card">
+      <h2>2) Config EDV destino</h2>
+      <div class="content grid">
+        <div class="grid twocol">
+          <div>
+            <label for="catalogEdv">Catálogo EDV</label>
+            <input id="catalogEdv" type="text" placeholder="catalog_lhcl_prod_bcp_expl" />
+          </div>
+          <div>
+            <label for="schemaEdv">Esquema EDV</label>
+            <input id="schemaEdv" type="text" placeholder="bcp_edv_trdata_012" />
+          </div>
+        </div>
+        <div class="grid twocol">
+          <div>
+            <label for="tableEdv">Tabla EDV destino</label>
+            <input id="tableEdv" type="text" placeholder="HM_MATRIZTRANSACCIONCANALPAGOTRANSFERENCIA_RUBEN" />
+          </div>
+          <div>
+            <label for="partitionCol">Columna partición (mes)</label>
+            <input id="partitionCol" type="text" placeholder="CODMESANALISIS" />
+          </div>
+        </div>
+        <div class="grid twocol">
+          <div>
+            <label for="procName">Process name</label>
+            <input id="procName" type="text" placeholder="hm_matriztransaccioncanalpagotransferencia" />
+          </div>
+          <div>
+            <label for="fechaRutina">Fecha rutina (YYYY-MM-DD)</label>
+            <input id="fechaRutina" type="text" placeholder="2025-09-01" />
+          </div>
+        </div>
+        <div class="grid twocol">
+          <div>
+            <label for="catalogDdv">Catálogo DDV (lecturas)</label>
+            <input id="catalogDdv" type="text" placeholder="catalog_lhcl_prod_bcp" />
+          </div>
+          <div>
+            <label for="schemaDdv">Esquema DDV (lecturas)</label>
+            <input id="schemaDdv" type="text" placeholder="bcp_ddv_matrizvariables_v" />
+          </div>
+        </div>
+        <div>
+          <label for="checkpoint">Checkpoint (opcional, si aún lo usas)</label>
+          <input id="checkpoint" type="text" placeholder="abfss://.../data/..." />
+        </div>
+        <div class="row">
+          <button class="btn primary" id="analyze">Analizar & Corregir</button>
+          <button class="btn" id="download" disabled>Descargar MV corregido</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- REPORT -->
+    <section class="card full">
+      <h2>3) Cambios detectados</h2>
+      <div class="content">
+        <div id="report" class="grid"></div>
+      </div>
+    </section>
+
+    <!-- BEFORE/AFTER -->
+    <section class="card">
+      <h2>Código original</h2>
+      <div class="content">
+        <pre id="before"><span class="small">Pega o sube tu script para ver aquí el original…</span></pre>
+      </div>
+    </section>
+    <section class="card">
+      <h2>Código corregido</h2>
+      <div class="content">
+        <pre id="after"><span class="small">Haz clic en “Analizar & Corregir” para ver el resultado…</span></pre>
+      </div>
+    </section>
+
+    <!-- PARAMS -->
+    <section class="card full">
+      <h2>4) Parámetros de ejecución (Databricks)</h2>
+      <div class="content grid">
+        <div>
+          <label>Snippet Python (args)</label>
+          <pre id="paramsPy" class="mono small">—</pre>
+          <div class="row">
+            <button class="btn" id="copyParamsPy">Copiar</button>
+          </div>
+        </div>
+        <div>
+          <label>JSON de widgets/Job params (opcional)</label>
+          <pre id="paramsJson" class="mono small">—</pre>
+          <div class="row">
+            <button class="btn" id="copyParamsJson">Copiar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="footer small">Hecho para ayudarte a probar en EDV sin dolores: managed tables, replaceWhere y schema alignment.</div>
+
+<script>
+(function(){
+  const el = id => document.getElementById(id);
+  const $src = el('source'), $file = el('file'), $before = el('before'), $after = el('after');
+  const $report = el('report'), $download = el('download'), $analyze = el('analyze'), $loadSample = el('loadSample');
+  const inputs = {
+    catalogEdv: el('catalogEdv'),
+    schemaEdv: el('schemaEdv'),
+    tableEdv: el('tableEdv'),
+    partitionCol: el('partitionCol'),
+    procName: el('procName'),
+    fechaRutina: el('fechaRutina'),
+    catalogDdv: el('catalogDdv'),
+    schemaDdv: el('schemaDdv'),
+    checkpoint: el('checkpoint'),
+  };
+  const $paramsPy = el('paramsPy'), $paramsJson = el('paramsJson');
+  const $copyPy = el('copyParamsPy'), $copyJson = el('copyParamsJson');
+
+  let corrected = '';
+
+  function sanitize(s){ return (s||'').replace(/\r\n/g, '\n'); }
+
+  function loadFile(f){
+    const r = new FileReader();
+    r.onload = e => { $src.value = e.target.result; $before.textContent = e.target.result; };
+    r.readAsText(f);
+  }
+
+  $file.addEventListener('change', e => { if(e.target.files?.[0]) loadFile(e.target.files[0]); });
+  $src.addEventListener('input', e => { $before.textContent = e.target.value; });
+
+  $loadSample.addEventListener('click', () => {
+    const sample = `# sample recortado
+def create_temporary_table(self, df, table_name, path):
+    df.write.format("delta").mode("overwrite").saveAsTable(table_name, path=path)
+    return self.spark.read.table(table_name)
+
+def transformer(self):
+    codMes = 202507
+    df_info_12_meses = self.spark.table("algo")
+    dfs = LazyDict({
+        "HM_MATRIZTRANSACCIONCANALPAGOTRANSFERENCIA": {
+            "catalog": self.catalogedv,
+            "schema": self.schemaedv,
+            "table": "HM_MATRIZTRANSACCIONCANALPAGOTRANSFERENCIA_RUBEN",
+            "dataframe": self.AgruparInfoMesAnalisis(df_info_12_meses, codMes),
+            "mode": "overwrite"
+        }
+    })
+    self._writer.write(dfs)
+    self.clean_temporary_table()
+`;
+    $src.value = sample;
+    $before.textContent = sample;
+  });
+
+  function reportItem(kind, title, detail){
+    const icon = kind==='ok'?'✅': kind==='warn'?'⚠️':'❌';
+    const node = document.createElement('div');
+    node.className = 'hl';
+    node.style.marginBottom = '10px';
+    node.innerHTML = `<div class="row"><span class="chip">${icon}&nbsp;${title}</span></div>
+      ${detail?`<div class="small" style="margin-top:6px">${detail}</div>`:''}`;
+    $report.appendChild(node);
+  }
+
+  function ensureImport(text, importLine){
+    if(!new RegExp('^\\s*'+importLine.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\s*$', 'm').test(text)){
+      return importLine + '\n' + text;
+    }
+    return text;
+  }
+
+  function injectHelper(text, fullNameVar, partitionCol){
+    const exists = text.includes('def _safe_write_month_managed(');
+    if(exists){ reportItem('ok','Helper de escritura ya existe','Se reutiliza `_safe_write_month_managed`.'); return text; }
+
+    const helper = `
+# ========= Helper gestionado por EDV (managed + replaceWhere + alineación de esquema) =========
+def _safe_write_month_managed(self, df_final, codMes):
+    import pyspark.sql.functions as F
+    from pyspark.sql.types import *
+
+    full_name = ${fullNameVar}
+    part_col = "${partitionCol}"
+
+    # Alinear columnas/nombres/tipos al esquema destino si existe
+    def _align_to_target(df):
+        try:
+            if self.spark.catalog._jcatalog.tableExists(full_name):
+                target = self.spark.table(full_name)
+                tgt_schema = target.schema
+                # map case-insensitive
+                src_map = {c.lower(): c for c in df.columns}
+                selected = []
+                for f in tgt_schema.fields:
+                    name = f.name
+                    src = src_map.get(name.lower())
+                    col = F.col(src) if src else F.lit(None)
+                    selected.append(col.cast(f.dataType).alias(name))
+                return df.select(*selected)
+            return df
+        except Exception as _:
+            return df
+
+    df_aligned = _align_to_target(df_final)
+
+    # Crear tabla managed si no existe (particionada)
+    if not self.spark.catalog._jcatalog.tableExists(full_name):
+        (df_aligned.limit(0)
+         .write
+         .format("delta")
+         .partitionBy(part_col)
+         .mode("overwrite")
+         .saveAsTable(full_name))
+
+    # Overwrite SOLO la partición del mes actual
+    (df_aligned
+        .write
+        .format("delta")
+        .mode("overwrite")
+        .option("replaceWhere", f"{part_col} = {int(codMes)}")
+        .saveAsTable(full_name))
+# ==============================================================================================
+`;
+    reportItem('ok','Se agregó helper `_safe_write_month_managed`',
+      'Crea tabla managed si no existe, alinea el esquema y hace overwrite por partición con replaceWhere.');
+    // insert after first import block if any
+    const m = text.match(/(^from\s+[^\n]+\n|^import\s+[^\n]+\n)+/m);
+    if(m){
+      const idx = m.index + m[0].length;
+      return text.slice(0, idx) + '\n' + helper + '\n' + text.slice(idx);
+    }
+    return helper + '\n' + text;
+  }
+
+  function fixCreateTemporary(text){
+    // Reemplaza cuerpos de create_temporary_table para que NO usen path=
+    const re = /def\s+create_temporary_table\s*\(\s*self\s*,\s*df\s*:\s*DataFrame\s*,\s*table_name\s*:\s*str\s*,\s*path\s*:\s*str\s*\)\s*->\s*DataFrame\s*:\s*[\s\S]*?^\s*return\s+[^\n]+$/m;
+    const re2 = /def\s+create_temporary_table\s*\(\s*self\s*,\s*df\s*,\s*table_name\s*,\s*path\s*\)\s*:\s*[\s\S]*?^\s*return\s+[^\n]+$/m;
+    let changed = false;
+    function replacement(){
+      changed = true;
+      return `def create_temporary_table(self, df, table_name, path):
+    \"\"\"Crea tabla Delta managed (UC) sin path — temporal física controlada por UC.\"\"\"
+    (df.write
+      .format("delta")
+      .mode("overwrite")
+      .saveAsTable(table_name))  # SIN path
+    return self.spark.read.table(table_name)`;
+    }
+    let out = text;
+    if(re.test(out)){ out = out.replace(re, replacement); }
+    else if(re2.test(out)){ out = out.replace(re2, replacement); }
+
+    if(changed){
+      reportItem('ok','`create_temporary_table` ahora es managed (sin path)','Evita permisos de FILE en ADLS con Spark Connect/UC.');
+    } else {
+      // también hacemos un reemplazo simple de .saveAsTable(..., path=...)
+      const reCall = /\.saveAsTable\s*\(\s*([^\),]+)\s*,\s*path\s*=\s*[^\)]+\)/g;
+      if(reCall.test(out)){
+        out = out.replace(reCall, '.saveAsTable($1)');
+        reportItem('ok','Se removió `path=` en `saveAsTable(...)`','Tablas temporales pasan a managed.');
+      } else {
+        reportItem('warn','No se halló `create_temporary_table`','Si no existen temporales físicas, no hay nada que cambiar aquí.');
+      }
+    }
+    return out;
+  }
+
+  function replaceWriterBlock(text, fullNameVar, partitionCol){
+    // Detecta bloque del writer para HM_* con mode overwrite y lo sustituye por _safe_write_month_managed
+    const writerRe = /dfs\s*=\s*LazyDict\s*\(\s*\{\s*["']HM_MATRIZTRANSACCIONCANALPAGOTRANSFERENCIA["']\s*:\s*\{[\s\S]*?}\s*}\s*\)\s*;\s*self\._writer\.write\(dfs\)|dfs\s*=\s*LazyDict\s*\([\s\S]*?\)\s*[\n\r]+\s*self\._writer\.write\s*\(dfs\)/m;
+
+    // Más permisivo: busca table HM_MATRIZTRANSACCIONCANALPAGOTRANSFERENCIA_RUBEN y writer.write
+    const writerRe2 = /dfs\s*=\s*LazyDict\s*\([\s\S]*?["']table["']\s*:\s*["']HM_MATRIZTRANSACCIONCANALPAGOTRANSFERENCIA_RUBEN["'][\s\S]*?\)\s*[\n\r]+\s*self\._writer\.write\s*\(dfs\)/m;
+
+    let out = text, changed=false;
+    const repl = `
+# MOD. EDV: construir df_final y escribir por partición de mes (managed)
+df_final = self.AgruparInfoMesAnalisis(df_info_12_meses, codMes)
+assert "${partitionCol}".upper() in [c.upper() for c in df_final.columns], "No existe columna de partición ${partitionCol}"
+self._safe_write_month_managed(df_final, int(codMes))`;
+
+    if(writerRe.test(out)){ out = out.replace(writerRe, repl); changed=true; }
+    else if(writerRe2.test(out)){ out = out.replace(writerRe2, repl); changed=true; }
+
+    if(changed){
+      reportItem('ok','Se reemplazó el bloque del writer (overwrite global)','Ahora se escribe solo la partición del mes con `replaceWhere`.');
+    } else {
+      reportItem('warn','No se detectó bloque del writer a reemplazar',
+        'Si tu escritura final no usa `self._writer.write(dfs)` con overwrite global, ignora este aviso.');
+    }
+    return out;
+  }
+
+  function substituteDestFullName(text, catalogEdv, schemaEdv, tableEdv){
+    // Introducimos una variable de string para el full_name en Python
+    // y la usamos dentro del helper; si ya existe, no hacemos doble inserción.
+    const full = `${catalogEdv}.${schemaEdv}.${tableEdv}`;
+    const tag = '__MV_EDV_FULLNAME__';
+    if(!text.includes(tag)){
+      text = `# EDV destino (inyectado por MV Fixer)
+MV_EDV_FULLNAME = "${full}"  # ${tag}
+
+` + text;
+      reportItem('ok','Se inyectó EDV FULL NAME', `Destino: <code>${full}</code>`);
+    } else {
+      reportItem('ok','FULL NAME EDV ya estaba inyectado','Se reutiliza.');
+    }
+    return { text, fullNameVar: 'MV_EDV_FULLNAME' };
+  }
+
+  function makeParams(c){
+    const params = [
+      "PRM_SPARK_ENVIRONMENT=prod",
+      `PRM_SPARK_PROCESS_NAME=${c.procName}`,
+      `PRM_SPARK_FECHA_RUTINA=${c.fechaRutina}`,
+      `PRM_SPARK_ESQUEMA_DDV=${c.catalogDdv}.${c.schemaDdv}`,
+      `${c.catalogEdv && c.schemaEdv ? `PRM_SPARK_ESQUEMA_EDV=${c.catalogEdv}.${c.schemaEdv}`:''}`,
+      "PRM_SPARK_COD_APP=dummy",
+      `${c.checkpoint ? `PRM_SPARK_CHECKPOINT_PATH=${c.checkpoint}`:''}`
+    ].filter(Boolean);
+
+    const py = `nombre_proceso_carga = '${c.procName}'
+
+args = [
+    nombre_proceso_carga,
+    nombre_proceso_carga,
+    'CDDV',
+    '1',
+    'axxx',
+    '%'.join([
+        ${params.map(p=>`"${p}"`).join(',\n        ')}
+    ]),
+]`;
+    const json = {
+      PRM_SPARK_ENVIRONMENT: "prod",
+      PRM_SPARK_PROCESS_NAME: c.procName,
+      PRM_SPARK_FECHA_RUTINA: c.fechaRutina,
+      PRM_SPARK_ESQUEMA_DDV: `${c.catalogDdv}.${c.schemaDdv}`,
+      PRM_SPARK_ESQUEMA_EDV: `${c.catalogEdv}.${c.schemaEdv}`,
+      PRM_SPARK_COD_APP: "dummy",
+      ...(c.checkpoint? { PRM_SPARK_CHECKPOINT_PATH: c.checkpoint } : {})
+    };
+    return { py, json: JSON.stringify(json, null, 2) };
+  }
+
+  $analyze.addEventListener('click', () => {
+    $report.innerHTML = '';
+    const src = sanitize($src.value);
+    if(!src.trim()){ alert('Pega tu script primero.'); return; }
+
+    // config
+    const cfg = Object.fromEntries(Object.entries(inputs).map(([k,el])=>[k, el.value.trim()]));
+    if(!cfg.catalogEdv || !cfg.schemaEdv || !cfg.tableEdv){ alert('Completa catálogo, esquema y tabla EDV destino.'); return; }
+    const partitionCol = cfg.partitionCol || 'CODMESANALISIS';
+
+    // 0) inyectar nombre EDV destino
+    let cur = substituteDestFullName(src, cfg.catalogEdv, cfg.schemaEdv, cfg.tableEdv);
+    let code = cur.text;
+    const fullNameVar = cur.fullNameVar;
+
+    // 1) asegurar imports útiles
+    code = ensureImport(code, 'import pyspark.sql.functions as F');
+
+    // 2) helper de escritura segura
+    code = injectHelper(code, fullNameVar, partitionCol);
+
+    // 3) convertir temporales a managed (remover path=)
+    code = fixCreateTemporary(code);
+
+    // 4) reemplazar bloque del writer por llamado al helper
+    code = replaceWriterBlock(code, fullNameVar, partitionCol);
+
+    corrected = code;
+    $after.textContent = corrected;
+    $download.disabled = false;
+
+    // params
+    const { py, json } = makeParams(cfg);
+    $paramsPy.textContent = py;
+    $paramsJson.textContent = json;
+
+    reportItem('ok','Listo','Revisa el bloque “Código corregido”, descarga el .py y ejecuta con los parámetros generados.');
+  });
+
+  $download.addEventListener('click', () => {
+    if(!corrected){ return; }
+    const blob = new Blob([corrected], {type:'text/x-python'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mv_corregido.py';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  function copy(el){ navigator.clipboard.writeText(el.textContent||''); }
+  $copyPy.addEventListener('click', ()=>copy($paramsPy));
+  $copyJson.addEventListener('click', ()=>copy($paramsJson));
+})();
+</script>
+</body>
+</html>
